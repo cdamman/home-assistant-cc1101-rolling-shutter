@@ -1,0 +1,12 @@
+{
+  "domain": "cc1101_rolling_shutter",
+  "name": "CC1101 Rolling Shutter",
+  "codeowners": ["@cdamman"],
+  "config_flow": true,
+  "documentation": "https://github.com/cdamman/home-assistant-cc1101-rolling-shutter",
+  "integration_type": "hub",
+  "iot_class": "assumed_state",
+  "issue_tracker": "https://github.com/cdamman/home-assistant-cc1101-rolling-shutter/issues",
+  "requirements": ["pyserial==3.5"],
+  "version": "1.0.0"
+}

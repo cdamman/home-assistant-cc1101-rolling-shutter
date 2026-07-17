@@ -1,0 +1,56 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "CC1101 Rolling Shutter",
+        "description": "Configure the serial link to the CC1101 module.",
+        "data": {
+          "port": "Serial port",
+          "baudrate": "Baud rate"
+        }
+      },
+      "reconfigure": {
+        "title": "Change the serial link",
+        "description": "Change the serial port or baud rate. Your shutters and their room assignment are preserved.",
+        "data": {
+          "port": "Serial port",
+          "baudrate": "Baud rate"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This serial port is already configured.",
+      "reconfigure_successful": "The serial link has been updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "CC1101 Rolling Shutter",
+        "menu_options": {
+          "add_shutter": "Add a shutter",
+          "remove_shutter": "Remove a shutter"
+        }
+      },
+      "add_shutter": {
+        "title": "Add a shutter",
+        "data": {
+          "shutter_id": "Shutter ID (e.g. 4)",
+          "name": "Name"
+        }
+      },
+      "remove_shutter": {
+        "title": "Remove a shutter",
+        "data": {
+          "to_remove": "Shutters to remove"
+        }
+      }
+    },
+    "error": {
+      "already_exists": "A shutter with this ID already exists."
+    },
+    "abort": {
+      "no_shutters": "There is no shutter to remove yet."
+    }
+  }
+}

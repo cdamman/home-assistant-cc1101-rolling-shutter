@@ -1,0 +1,56 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "CC1101 Rolling Shutter",
+        "description": "Configurez la liaison série vers le module CC1101.",
+        "data": {
+          "port": "Port série",
+          "baudrate": "Débit (bauds)"
+        }
+      },
+      "reconfigure": {
+        "title": "Modifier la liaison série",
+        "description": "Changez le port série ou le débit. Vos volets et leur affectation aux pièces sont conservés.",
+        "data": {
+          "port": "Port série",
+          "baudrate": "Débit (bauds)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Ce port série est déjà configuré.",
+      "reconfigure_successful": "La liaison série a été mise à jour."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "CC1101 Rolling Shutter",
+        "menu_options": {
+          "add_shutter": "Ajouter un volet",
+          "remove_shutter": "Supprimer un volet"
+        }
+      },
+      "add_shutter": {
+        "title": "Ajouter un volet",
+        "data": {
+          "shutter_id": "Identifiant du volet (ex. 4)",
+          "name": "Nom"
+        }
+      },
+      "remove_shutter": {
+        "title": "Supprimer un volet",
+        "data": {
+          "to_remove": "Volets à supprimer"
+        }
+      }
+    },
+    "error": {
+      "already_exists": "Un volet possède déjà cet identifiant."
+    },
+    "abort": {
+      "no_shutters": "Aucun volet à supprimer pour le moment."
+    }
+  }
+}
