@@ -58,7 +58,13 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
     restarts, through ``RestoreEntity``.
     """
 
-    _attr_device_class = CoverDeviceClass.SHUTTER
+    # Note: this setting also drives the classification on the Google Home
+    # side. BLIND is not part of the DEVICE_CLASS_TO_GOOGLE_TYPES table of the
+    # google_assistant component, so it falls back to the default type of the
+    # "cover" domain => action.devices.types.BLINDS, i.e. "Blind" in Google
+    # Home (SHUTTER, on the other hand, mapped to .../SHUTTER, i.e. "Shutter").
+    _attr_device_class = CoverDeviceClass.BLIND
+    _attr_device_class = CoverDeviceClass.BLIND
     _attr_supported_features = (
         CoverEntityFeature.OPEN
         | CoverEntityFeature.CLOSE
