@@ -99,6 +99,23 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
             model="Rolling Shutter",
         )
 
+    @property
+    def icon(self) -> str:
+        """Roller-shutter icon in the Home Assistant UI, based on the state.
+
+        The BLIND device class (chosen so that Google Home classifies the
+        device as a "Blind") would give a blind icon by default. We override it
+        here to get the roller-shutter icons back, and make them follow the
+        state:
+          - closed -> mdi:window-shutter       (slats down)
+          - open   -> mdi:window-shutter-open  (slats up)
+        This override is purely cosmetic on the HA side and has no effect on
+        the classification sent to Google Home.
+        """
+        if self._attr_is_closed:
+            return "mdi:window-shutter"
+        return "mdi:window-shutter-open"
+
     async def async_added_to_hass(self) -> None:
         """Restore the last known state from the Home Assistant cache."""
         await super().async_added_to_hass()
