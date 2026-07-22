@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from homeassistant.components.cover import (
+    ATTR_POSITION,
     CoverDeviceClass,
     CoverEntity,
     CoverEntityFeature,
@@ -69,9 +70,21 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
         CoverEntityFeature.OPEN
         | CoverEntityFeature.CLOSE
         | CoverEntityFeature.STOP
+        # SET_POSITION acts as a "lever" so that the google_assistant component
+        # computes isRunning=True at all times (hence "Stop" always available)
+        # while keeping assumed_state=False (hence the open/closed state stays
+        # visible in Google Home). The hardware has no real position: the
+        # setpoint is snapped to open/closed (see async_set_cover_position).
+        | CoverEntityFeature.SET_POSITION
     )
-    # No position sensor: the state is assumed, not measured.
-    _attr_assumed_state = True
+    # assumed_state = False: we expose a "real" state/position (inferred from
+    # our commands) so that Google Home displays open/closed. Combined with
+    # SET_POSITION above, this also keeps "Stop" permanently available.
+    # Trade-off on the Home Assistant side: when idle (position 0% or 100%),
+    # the redundant button is greyed out — a shutter already "closed" cannot be
+    # closed again through that button (the slider stays usable at all times).
+    _attr_assumed_state = False
+    _attr_assumed_state = False
     _attr_should_poll = False
     # The entity carries the name of its device (one device = one shutter).
     _attr_has_entity_name = True
@@ -116,6 +129,19 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
             return "mdi:window-shutter"
         return "mdi:window-shutter-open"
 
+    @property
+    def current_cover_position(self) -> int | None:
+        """Position exposed to HA and Google Home: 0 = closed, 100 = open.
+
+        The hardware has no intermediate position; we simply mirror the cached
+        binary state. Publishing a position is required for SET_POSITION (and
+        therefore for "Stop" being permanently available) to make sense, and
+        for Google Home to display the state.
+        """
+        if self._attr_is_closed is None:
+            return None
+        return 0 if self._attr_is_closed else 100
+
     async def async_added_to_hass(self) -> None:
         """Restore the last known state from the Home Assistant cache."""
         await super().async_added_to_hass()
@@ -124,6 +150,16 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
             self._attr_is_closed = last_state.state == STATE_CLOSED
             _LOGGER.debug(
                 "Shutter %s: restored state = %s", self._shutter_id, last_state.state
+            )
+        else:
+            # Nothing to restore: start from a concrete state rather than
+            # "unknown" (with assumed_state=False, "unknown" would make the
+            # shutter show up as offline in Google Home). Set to True to
+            # start "closed".
+            self._attr_is_closed = False
+            _LOGGER.debug(
+                "Shutter %s: no state restored, defaulting to open",
+                self._shutter_id,
             )
 
     async def async_open_cover(self, **kwargs: Any) -> None:
@@ -146,6 +182,21 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
         (open/closed/unknown).
         """
         await self._send("stop")
+
+    async def async_set_cover_position(self, **kwargs: Any) -> None:
+        """Position setpoint: snapped to open/closed (50% threshold).
+
+        The hardware knows no intermediate position:
+          - position < 50   -> close the shutter;
+          - position >= 50  -> open the shutter (50 included).
+        The displayed position then snaps back to 0 or 100 through
+        ``current_cover_position``.
+        """
+        position = kwargs[ATTR_POSITION]
+        if position < 50:
+            await self.async_close_cover()
+        else:
+            await self.async_open_cover()
 
     async def _send(self, action: str) -> None:
         """Send the command on the executor and validate the response."""
