@@ -163,16 +163,31 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
             )
 
     async def async_open_cover(self, **kwargs: Any) -> None:
-        """Open the shutter: send ``<id> open``."""
-        await self._send("open")
-        self._attr_is_closed = False
-        self.async_write_ha_state()  # cache the state and display it
+        """Open the shutter."""
+        await self._optimistic_send("open", is_closed=False)
 
     async def async_close_cover(self, **kwargs: Any) -> None:
-        """Close the shutter: send ``<id> close``."""
-        await self._send("close")
-        self._attr_is_closed = True
-        self.async_write_ha_state()  # cache the state and display it
+        """Close the shutter."""
+        await self._optimistic_send("close", is_closed=True)
+
+    async def _optimistic_send(self, action: str, is_closed: bool) -> None:
+        """Publish the state BEFORE sending the (possibly slow) command.
+
+        The google_assistant component runs the command in a non-blocking way
+        then reads the state back for its response; publishing the state after
+        the serial round-trip would make the tile flicker back to the previous
+        state. So we publish the state first, then send the command; on
+        failure, we roll back.
+        """
+        previous = self._attr_is_closed
+        self._attr_is_closed = is_closed
+        self.async_write_ha_state()
+        try:
+            await self._send(action)
+        except HomeAssistantError:
+            self._attr_is_closed = previous
+            self.async_write_ha_state()
+            raise
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the shutter: send ``<id> stop``.
