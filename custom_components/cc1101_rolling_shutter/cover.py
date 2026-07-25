@@ -1,4 +1,4 @@
-"""Cover platform: one rolling shutter = one entity."""
+"""Cover platform: one CC1101 shutter = one entity."""
 from __future__ import annotations
 
 import logging
@@ -18,14 +18,13 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
+from .backend import SerialShutterBackend
 from .const import (
     CONF_NAME,
     CONF_SHUTTER_ID,
     CONF_SHUTTERS,
     DOMAIN,
-    EXPECTED_RESPONSE,
 )
-from .serial_controller import SerialController
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,27 +35,32 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Create one entity per shutter declared in the options."""
-    controller: SerialController = hass.data[DOMAIN][entry.entry_id]
-    shutters = entry.options.get(CONF_SHUTTERS, [])
+    data = hass.data[DOMAIN][entry.entry_id]
+    controller = data["controller"]
+    lock = data["lock"]  # shared => RF transmissions serialized per module
 
-    entities = [
-        CC1101ShutterCover(
-            controller=controller,
-            entry_id=entry.entry_id,
-            shutter_id=str(shutter[CONF_SHUTTER_ID]),
-            name=shutter[CONF_NAME],
+    entities: list[AssumedShutterCover] = []
+    for cover in entry.options.get(CONF_SHUTTERS, []):
+        shutter_id = str(cover[CONF_SHUTTER_ID])
+        entities.append(
+            AssumedShutterCover(
+                backend=SerialShutterBackend(hass, controller, shutter_id, lock),
+                entry_id=entry.entry_id,
+                key=shutter_id,
+                name=cover[CONF_NAME],
+            )
         )
-        for shutter in shutters
-    ]
+
     async_add_entities(entities)
 
 
-class CC1101ShutterCover(CoverEntity, RestoreEntity):
-    """A rolling shutter driven by the CC1101 module.
+class AssumedShutterCover(CoverEntity, RestoreEntity):
+    """A CC1101 shutter whose state is not reported by the hardware.
 
-    The module reports no state at all, so we are in "assumed state". The
-    state is cached after each transition and restored when Home Assistant
-    restarts, through ``RestoreEntity``.
+    The state and the position (0 = closed, 100 = open) are *inferred* from
+    our own commands, cached after each action and restored on restart through
+    ``RestoreEntity``. The module never reports any state. A position setpoint
+    is snapped to one of the two extremes (see ``async_set_cover_position``).
     """
 
     # Note: this setting also drives the classification on the Google Home
@@ -64,7 +68,6 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
     # google_assistant component, so it falls back to the default type of the
     # "cover" domain => action.devices.types.BLINDS, i.e. "Blind" in Google
     # Home (SHUTTER, on the other hand, mapped to .../SHUTTER, i.e. "Shutter").
-    _attr_device_class = CoverDeviceClass.BLIND
     _attr_device_class = CoverDeviceClass.BLIND
     _attr_supported_features = (
         CoverEntityFeature.OPEN
@@ -84,7 +87,6 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
     # the redundant button is greyed out — a shutter already "closed" cannot be
     # closed again through that button (the slider stays usable at all times).
     _attr_assumed_state = False
-    _attr_assumed_state = False
     _attr_should_poll = False
     # The entity carries the name of its device (one device = one shutter).
     _attr_has_entity_name = True
@@ -92,19 +94,19 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
 
     def __init__(
         self,
-        controller: SerialController,
+        backend: SerialShutterBackend,
         entry_id: str,
-        shutter_id: str,
+        key: str,
         name: str,
     ) -> None:
-        self._controller = controller
-        self._shutter_id = shutter_id
-        self._attr_unique_id = f"{entry_id}_{shutter_id}"
+        self._backend = backend
+        # Human-readable identifier for the logs (radio ID of the shutter).
+        self._log_id = key
+        self._attr_unique_id = f"{entry_id}_{key}"
         # None => state unknown as long as no command has been sent and no
         # previous state has been restored.
         self._attr_is_closed: bool | None = None
-        # One distinct device per shutter: a unique identifier per shutter.
-        # Each one can therefore be assigned to a different room.
+        # One distinct device per shutter: each can be assigned to a room.
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._attr_unique_id)},
             name=name,
@@ -149,17 +151,17 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
         if last_state is not None and last_state.state in (STATE_OPEN, STATE_CLOSED):
             self._attr_is_closed = last_state.state == STATE_CLOSED
             _LOGGER.debug(
-                "Shutter %s: restored state = %s", self._shutter_id, last_state.state
+                "Shutter %s: restored state = %s", self._log_id, last_state.state
             )
         else:
-            # Nothing to restore: start from a concrete state rather than
-            # "unknown" (with assumed_state=False, "unknown" would make the
-            # shutter show up as offline in Google Home). Set to True to
-            # start "closed".
+            # Nothing to restore (very first start): start from a concrete
+            # state rather than "unknown". This matters with
+            # assumed_state=False: an "unknown" state would make the Google
+            # Home state query fail (the shutter would show up as offline).
+            # Set to True to start "closed".
             self._attr_is_closed = False
             _LOGGER.debug(
-                "Shutter %s: no state restored, defaulting to open",
-                self._shutter_id,
+                "Shutter %s: no state restored, defaulting to open", self._log_id
             )
 
     async def async_open_cover(self, **kwargs: Any) -> None:
@@ -173,30 +175,32 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
     async def _optimistic_send(self, action: str, is_closed: bool) -> None:
         """Publish the state BEFORE sending the (possibly slow) command.
 
-        The google_assistant component runs the command in a non-blocking way
-        then reads the state back for its response; publishing the state after
-        the serial round-trip would make the tile flicker back to the previous
-        state. So we publish the state first, then send the command; on
-        failure, we roll back.
+        Important detail for Google Home: when state reporting is enabled, the
+        google_assistant component runs the command in a NON-blocking way and
+        immediately reads the state back for its response. If we only updated
+        the state AFTER the command had been sent, that read would return the
+        old state and the tile would flicker back to the previous state before
+        correcting itself. So we publish the optimistic state first, then send
+        the command; if the backend fails, we roll back to the previous state.
         """
         previous = self._attr_is_closed
         self._attr_is_closed = is_closed
         self.async_write_ha_state()
         try:
-            await self._send(action)
+            await self._backend.async_send(action)
         except HomeAssistantError:
             self._attr_is_closed = previous
             self.async_write_ha_state()
             raise
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
-        """Stop the shutter: send ``<id> stop``.
+        """Stop the shutter.
 
         The cached state is left untouched: there is no way to know at which
         position the shutter stopped, so we keep the last known state
         (open/closed/unknown).
         """
-        await self._send("stop")
+        await self._backend.async_send("stop")
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         """Position setpoint: snapped to open/closed (50% threshold).
@@ -212,20 +216,3 @@ class CC1101ShutterCover(CoverEntity, RestoreEntity):
             await self.async_close_cover()
         else:
             await self.async_open_cover()
-
-    async def _send(self, action: str) -> None:
-        """Send the command on the executor and validate the response."""
-        try:
-            response = await self.hass.async_add_executor_job(
-                self._controller.send_command, self._shutter_id, action
-            )
-        except Exception as err:  # noqa: BLE001 - surfaced as a HA error
-            raise HomeAssistantError(
-                f"Serial link failure for shutter {self._shutter_id}: {err}"
-            ) from err
-
-        if EXPECTED_RESPONSE not in response:
-            raise HomeAssistantError(
-                f"Unexpected response from shutter {self._shutter_id} "
-                f"(expected {EXPECTED_RESPONSE!r}, got {response!r})"
-            )

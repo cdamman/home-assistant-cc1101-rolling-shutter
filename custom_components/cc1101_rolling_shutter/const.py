@@ -10,6 +10,7 @@ CONF_SHUTTERS = "shutters"
 CONF_SHUTTER_ID = "shutter_id"
 CONF_NAME = "name"
 
+
 # Defaults
 DEFAULT_PORT = "/dev/ttyUSB0"
 DEFAULT_BAUDRATE = 115200
@@ -22,3 +23,11 @@ COMMAND_TERMINATOR = "\n"
 EXPECTED_RESPONSE = "Sending"
 # Response read timeout, in seconds.
 SERIAL_TIMEOUT = 2
+
+# Spacing delay between two consecutive RF transmissions on the same CC1101
+# module, in seconds. The module acknowledges with "Sending" at the START of
+# the transmission; this delay lets the radio transmission finish before the
+# next command is sent, avoiding RF collisions when several shutters are
+# operated at the same time. Set to 0 if your module already blocks until the
+# transmission is complete.
+RF_INTERCOMMAND_DELAY = 0.4
