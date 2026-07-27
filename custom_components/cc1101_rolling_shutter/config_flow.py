@@ -23,17 +23,19 @@ from .const import (
     DEFAULT_BAUDRATE,
     DEFAULT_PORT,
     DOMAIN,
+    cover_key,
 )
 
 
 class CC1101ConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Initial configuration: the serial port and its baud rate."""
+    """Configuration of the CC1101 serial hub."""
 
     VERSION = 1
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Serial port + baud rate."""
         errors: dict[str, str] = {}
         if user_input is not None:
             # A serial port can only be configured once.
@@ -54,9 +56,7 @@ class CC1101ConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_BAUDRATE, default=DEFAULT_BAUDRATE): cv.positive_int,
             }
         )
-        return self.async_show_form(
-            step_id="user", data_schema=schema, errors=errors
-        )
+        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
@@ -68,10 +68,8 @@ class CC1101ConfigFlow(ConfigFlow, domain=DOMAIN):
         """
         entry = self._get_reconfigure_entry()
         errors: dict[str, str] = {}
-
         if user_input is not None:
             new_port = user_input[CONF_PORT].strip()
-            # Prevent two entries from pointing at the same port.
             if any(
                 other.entry_id != entry.entry_id
                 and other.data.get(CONF_PORT) == new_port
@@ -124,7 +122,7 @@ class CC1101OptionsFlow(OptionsFlow):
     async def async_step_add_shutter(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Add a shutter (ID + name)."""
+        """Add a shutter (radio ID + name)."""
         errors: dict[str, str] = {}
         shutters: list[dict[str, str]] = list(
             self.config_entry.options.get(CONF_SHUTTERS, [])
@@ -132,7 +130,7 @@ class CC1101OptionsFlow(OptionsFlow):
 
         if user_input is not None:
             new_id = str(user_input[CONF_SHUTTER_ID]).strip()
-            if any(s[CONF_SHUTTER_ID] == new_id for s in shutters):
+            if any(cover_key(s) == new_id for s in shutters):
                 errors["base"] = "already_exists"
             else:
                 shutters.append(
@@ -141,9 +139,7 @@ class CC1101OptionsFlow(OptionsFlow):
                         CONF_NAME: user_input[CONF_NAME].strip(),
                     }
                 )
-                return self.async_create_entry(
-                    title="", data={CONF_SHUTTERS: shutters}
-                )
+                return self.async_create_entry(title="", data={CONF_SHUTTERS: shutters})
 
         schema = vol.Schema(
             {
@@ -165,18 +161,14 @@ class CC1101OptionsFlow(OptionsFlow):
 
         if user_input is not None:
             to_remove = set(user_input.get("to_remove", []))
-            remaining = [
-                s for s in shutters if s[CONF_SHUTTER_ID] not in to_remove
-            ]
+            remaining = [s for s in shutters if cover_key(s) not in to_remove]
             return self.async_create_entry(title="", data={CONF_SHUTTERS: remaining})
 
         if not shutters:
-            # Nothing to remove: go back to the menu.
             return self.async_abort(reason="no_shutters")
 
         choices = {
-            s[CONF_SHUTTER_ID]: f"{s[CONF_NAME]} (id {s[CONF_SHUTTER_ID]})"
-            for s in shutters
+            cover_key(s): f"{s[CONF_NAME]} ({cover_key(s)})" for s in shutters
         }
         schema = vol.Schema(
             {vol.Optional("to_remove", default=[]): cv.multi_select(choices)}

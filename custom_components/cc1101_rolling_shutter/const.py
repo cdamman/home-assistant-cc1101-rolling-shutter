@@ -11,6 +11,14 @@ CONF_SHUTTER_ID = "shutter_id"
 CONF_NAME = "name"
 
 
+def cover_key(item: dict[str, str]) -> str:
+    """Return the key (radio ID) of a shutter.
+
+    Used to deduplicate, look up and delete a shutter in the options.
+    """
+    return item.get(CONF_SHUTTER_ID, "")
+
+
 # Defaults
 DEFAULT_PORT = "/dev/ttyUSB0"
 DEFAULT_BAUDRATE = 115200
