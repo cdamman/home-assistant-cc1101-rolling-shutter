@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="pcb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1f8a4c"/>
+      <stop offset="1" stop-color="#136b39"/>
+    </linearGradient>
+    <linearGradient id="chip" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2b2b"/>
+      <stop offset="1" stop-color="#0d0d0d"/>
+    </linearGradient>
+    <linearGradient id="coil" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e6e6e6"/>
+      <stop offset="0.5" stop-color="#9a9a9a"/>
+      <stop offset="1" stop-color="#e6e6e6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Helical spring antenna -->
+  <g fill="none" stroke="url(#coil)" stroke-width="12" stroke-linecap="round">
+    <ellipse cx="360" cy="96"  rx="34" ry="14" transform="rotate(-22 360 96)"/>
+    <ellipse cx="345" cy="128" rx="34" ry="14" transform="rotate(-22 345 128)"/>
+    <ellipse cx="330" cy="160" rx="34" ry="14" transform="rotate(-22 330 160)"/>
+    <ellipse cx="315" cy="192" rx="34" ry="14" transform="rotate(-22 315 192)"/>
+  </g>
+  <path d="M300 214 L300 150" stroke="#9a9a9a" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- PCB board -->
+  <rect x="88" y="196" width="336" height="252" rx="24" fill="url(#pcb)"
+        stroke="#0e5c31" stroke-width="4"/>
+
+  <!-- Corner mounting holes -->
+  <circle cx="120" cy="228" r="10" fill="#0c4d29"/>
+  <circle cx="392" cy="228" r="10" fill="#0c4d29"/>
+  <circle cx="120" cy="416" r="10" fill="#0c4d29"/>
+  <circle cx="392" cy="416" r="10" fill="#0c4d29"/>
+
+  <!-- Crystal oscillator -->
+  <rect x="300" y="250" width="86" height="34" rx="10" fill="#c9ccce" stroke="#8a8d8f" stroke-width="3"/>
+
+  <!-- Main IC (CC1101) -->
+  <rect x="146" y="256" width="128" height="112" rx="10" fill="url(#chip)"/>
+  <circle cx="164" cy="274" r="7" fill="#d8d8d8"/>
+  <!-- IC pins -->
+  <g fill="#c7a34a">
+    <rect x="128" y="272" width="18" height="8" rx="2"/>
+    <rect x="128" y="292" width="18" height="8" rx="2"/>
+    <rect x="128" y="312" width="18" height="8" rx="2"/>
+    <rect x="128" y="332" width="18" height="8" rx="2"/>
+    <rect x="128" y="352" width="18" height="8" rx="2"/>
+    <rect x="274" y="272" width="18" height="8" rx="2"/>
+    <rect x="274" y="292" width="18" height="8" rx="2"/>
+    <rect x="274" y="312" width="18" height="8" rx="2"/>
+    <rect x="274" y="332" width="18" height="8" rx="2"/>
+    <rect x="274" y="352" width="18" height="8" rx="2"/>
+  </g>
+
+  <!-- Silkscreen label -->
+  <text x="210" y="332" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+        font-size="34" font-weight="700" fill="#ffffff" letter-spacing="1">CC1101</text>
+
+  <!-- Gold header pads -->
+  <g fill="#e0b64d" stroke="#b78f2e" stroke-width="2">
+    <rect x="132" y="416" width="26" height="24" rx="4"/>
+    <rect x="170" y="416" width="26" height="24" rx="4"/>
+    <rect x="208" y="416" width="26" height="24" rx="4"/>
+    <rect x="246" y="416" width="26" height="24" rx="4"/>
+    <rect x="284" y="416" width="26" height="24" rx="4"/>
+    <rect x="322" y="416" width="26" height="24" rx="4"/>
+  </g>
+</svg>

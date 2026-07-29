@@ -19,7 +19,7 @@
       }
     },
     "abort": {
-      "already_configured": "Ce port série est déjà configuré.",
+      "already_configured": "Cette entrée est déjà configurée.",
       "reconfigure_successful": "La liaison série a été mise à jour."
     }
   },

@@ -1,0 +1,5 @@
+{
+  "name": "CC1101 Rolling Shutter",
+  "homeassistant": "2024.12.0",
+  "render_readme": true
+}

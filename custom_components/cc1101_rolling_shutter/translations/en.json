@@ -19,7 +19,7 @@
       }
     },
     "abort": {
-      "already_configured": "This serial port is already configured.",
+      "already_configured": "This entry is already configured.",
       "reconfigure_successful": "The serial link has been updated."
     }
   },
