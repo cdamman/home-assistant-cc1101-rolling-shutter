@@ -1,7 +1,7 @@
 # CC1101 Rolling Shutter
 
 Home Assistant custom integration to control rolling shutters through a CC1101
-serial module.
+serial module (433 MHz radio).
 
 ## How it works
 
@@ -9,9 +9,23 @@ Every shutter is exposed as a `cover` entity. On open/close, the integration
 writes the command `<id> open` or `<id> close` (e.g. `4 open`) to the serial
 port at 115200 baud, then waits for the module to answer `Sending`.
 
-The state is an "assumed state" (the module reports no real state): it is
-cached after each transition and **restored when Home Assistant restarts**
-(`RestoreEntity`).
+Since the module never reports a real state, both the state **and a position**
+(0 = closed, 100 = open) are *inferred* from the commands, cached after each
+action and **restored on restart** (`RestoreEntity`).
+
+### Behaviour in Google Home
+
+The entity is published with the `blind` device class, so Google Home
+classifies it as a **"Blind"** (not a "Shutter"). The Home Assistant icon, on
+the other hand, stays a roller-shutter icon that follows the state
+(open/closed).
+
+A position is exposed (`SET_POSITION`) for two reasons: to keep the **"Stop"
+button permanently available** in Google Home, and to display the open/closed
+state there. Since the hardware has no intermediate position, a position
+setpoint is snapped to the extremes: **< 50% → close, ≥ 50% → open**. The state
+is published optimistically *before* the command is sent, which avoids the
+Google tile flickering.
 
 ## Installation
 
@@ -21,30 +35,52 @@ cached after each transition and **restored when Home Assistant restarts**
 3. **Settings → Devices & services → Add integration →
    "CC1101 Rolling Shutter"**.
 4. Fill in the port (`/dev/ttyUSB0`) and the baud rate (`115200`).
-5. In **Configure** (the integration options), add your shutters (ID + name).
-   You can add or remove them at any time.
+5. In **Configure** (the integration options), add your shutters (radio ID +
+   name). You can add or remove them at any time.
 
-## Icon
+Deleting a shutter **device** from the UI also removes it from the options
+automatically.
 
-The repository ships the CC1101 module icon: `icon.svg` (vector source) and the
-`icon.png` (256×256) and `icon@2x.png` (512×512) renderings, in the formats
-Home Assistant expects.
+## Icon (the `brand/` folder)
 
-Home Assistant does not display the local images of a custom integration: the
-logo comes from the official
+Since **Home Assistant 2026.3**, a custom integration can ship its own brand
+images locally, without going through the
 [home-assistant/brands](https://github.com/home-assistant/brands) repository.
-For the icon to show up in the UI, put both PNGs in
-`custom_integrations/cc1101_rolling_shutter/` of that repository (through a
-pull request), or wait for them to be merged. In the meantime the icon stays
-shipped alongside the code.
+They just have to be dropped into a `brand/` folder at the root of the
+integration; Home Assistant serves them through its local API
+(`/api/brands/integration/cc1101_rolling_shutter/icon.png`) and **they take
+precedence** over the official CDN.
+
+Contents of `brand/`:
+
+| File            | Role                                    |
+| --------------- | --------------------------------------- |
+| `icon.png`      | 256×256 icon served by HA               |
+| `icon@2x.png`   | 512×512 high-resolution variant         |
+| `icon.svg`      | vector source (not served by HA)        |
+
+The name `icon@2x.png` (with the at sign) is the one Home Assistant expects for
+the 2× variant. `SVG` is not a format supported by the brand system (which only
+uses PNGs): it is kept as a vector source, but Home Assistant will not display
+it.
+
+> On a version older than 2026.3, the `brand/` folder is ignored; the PNGs then
+> have to be submitted to the `home-assistant/brands` repository.
+> Note: HACS may show an empty icon in its own storefront (it does not read
+> local images yet), which has no effect on how the integration looks in HA.
 
 ## Notes
 
-- The serial port is shared by every shutter and protected by a lock: commands
-  never overlap.
+- **RF serialization**: every command of a module goes through a shared lock —
+  one transmission at a time, in order. A spacing delay
+  (`RF_INTERCOMMAND_DELAY`, 0.4 s by default in `const.py`) lets each radio
+  transmission finish before the next one starts, to avoid collisions when
+  several shutters are operated at the same time. Set it to `0` if your
+  firmware already blocks until the transmission is done. Two distinct modules
+  (two entries) transmit in parallel.
 - Command terminator: `\n` by default (see `COMMAND_TERMINATOR` in `const.py`).
   Set it to `""` if your firmware does not expect one.
-- If the response does not contain `Sending`, the service call fails and the
-  state is left unchanged.
+- If the serial response does not contain `Sending`, the service call fails and
+  the optimistic state is rolled back.
 - Make sure the Home Assistant user can access the port (`/dev/ttyUSB0`, group
   `dialout`).
