@@ -63,34 +63,6 @@ Google tile flickering.
 Deleting a shutter **device** from the UI also removes it from the options
 automatically.
 
-## Icon (the `brand/` folder)
-
-Since **Home Assistant 2026.3**, a custom integration can ship its own brand
-images locally, without going through the
-[home-assistant/brands](https://github.com/home-assistant/brands) repository.
-They just have to be dropped into a `brand/` folder at the root of the
-integration; Home Assistant serves them through its local API
-(`/api/brands/integration/cc1101_rolling_shutter/icon.png`) and **they take
-precedence** over the official CDN.
-
-Contents of `brand/`:
-
-| File            | Role                                    |
-| --------------- | --------------------------------------- |
-| `icon.png`      | 256×256 icon served by HA               |
-| `icon@2x.png`   | 512×512 high-resolution variant         |
-| `icon.svg`      | vector source (not served by HA)        |
-
-The name `icon@2x.png` (with the at sign) is the one Home Assistant expects for
-the 2× variant. `SVG` is not a format supported by the brand system (which only
-uses PNGs): it is kept as a vector source, but Home Assistant will not display
-it.
-
-> On a version older than 2026.3, the `brand/` folder is ignored; the PNGs then
-> have to be submitted to the `home-assistant/brands` repository.
-> Note: HACS may show an empty icon in its own storefront (it does not read
-> local images yet), which has no effect on how the integration looks in HA.
-
 ## Notes
 
 - **RF serialization**: every command of a module goes through a shared lock —
