@@ -1,5 +1,11 @@
 # CC1101 Rolling Shutter
 
+[![Tests](https://github.com/cdamman/home-assistant-cc1101-rolling-shutter/actions/workflows/tests.yml/badge.svg)](https://github.com/cdamman/home-assistant-cc1101-rolling-shutter/actions/workflows/tests.yml)
+[![Validate](https://github.com/cdamman/home-assistant-cc1101-rolling-shutter/actions/workflows/validate.yml/badge.svg)](https://github.com/cdamman/home-assistant-cc1101-rolling-shutter/actions/workflows/validate.yml)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories)
+[![Release](https://img.shields.io/github/v/release/cdamman/home-assistant-cc1101-rolling-shutter?display_name=tag&sort=semver)](https://github.com/cdamman/home-assistant-cc1101-rolling-shutter/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Home Assistant custom integration to control rolling shutters through a CC1101
 serial module (433 MHz radio).
 
@@ -29,13 +35,29 @@ Google tile flickering.
 
 ## Installation
 
+### Through HACS (recommended)
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=cdamman&repository=home-assistant-cc1101-rolling-shutter&category=integration)
+
+1. Click the button above (or add
+   `https://github.com/cdamman/home-assistant-cc1101-rolling-shutter` as a
+   **custom repository** of category **Integration** in HACS).
+2. Download the integration, then restart Home Assistant.
+
+### Manually
+
 1. Copy the `custom_components/cc1101_rolling_shutter/` folder into your Home
    Assistant configuration (`<config>/custom_components/`).
 2. Restart Home Assistant.
-3. **Settings → Devices & services → Add integration →
-   "CC1101 Rolling Shutter"**.
-4. Fill in the port (`/dev/ttyUSB0`) and the baud rate (`115200`).
-5. In **Configure** (the integration options), add your shutters (radio ID +
+
+### Configuration
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=cc1101_rolling_shutter)
+
+1. **Settings → Devices & services → Add integration →
+   "CC1101 Rolling Shutter"** (or click the button above).
+2. Fill in the port (`/dev/ttyUSB0`) and the baud rate (`115200`).
+3. In **Configure** (the integration options), add your shutters (radio ID +
    name). You can add or remove them at any time.
 
 Deleting a shutter **device** from the UI also removes it from the options
@@ -84,3 +106,24 @@ it.
   the optimistic state is rolled back.
 - Make sure the Home Assistant user can access the port (`/dev/ttyUSB0`, group
   `dialout`).
+
+## Development
+
+The test suite runs against a real Home Assistant test harness
+(`pytest-homeassistant-custom-component`), with the serial layer mocked:
+
+```bash
+pip install -r requirements_test.txt
+pytest
+```
+
+Two GitHub workflows run on every push and pull request:
+
+- `tests.yml` — the pytest suite with coverage;
+- `validate.yml` — [hassfest](https://developers.home-assistant.io/blog/2020/04/16/hassfest)
+  (manifest validation) and the [HACS action](https://github.com/hacs/action)
+  (repository validation).
+
+## License
+
+[MIT](LICENSE)

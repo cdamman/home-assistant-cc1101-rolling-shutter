@@ -1,0 +1,2 @@
+pyserial==3.5
+pytest-homeassistant-custom-component>=0.13.316
