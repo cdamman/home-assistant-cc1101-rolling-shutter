@@ -36,6 +36,11 @@ SERIAL_TIMEOUT = 2
 # module, in seconds. The module acknowledges with "Sending" at the START of
 # the transmission; this delay lets the radio transmission finish before the
 # next command is sent, avoiding RF collisions when several shutters are
-# operated at the same time. Set to 0 if your module already blocks until the
-# transmission is complete.
-RF_INTERCOMMAND_DELAY = 0.4
+# operated at the same time.
+#
+# Sized from the firmware in firmware/: one command is NB_SIGNALS (4) frames
+# repeated NB_RETRIES (4) times, and each frame is followed by a 32 ms gap, so
+# the radio stays busy for at least ~0.5 s after the acknowledgement. 0.8 s
+# leaves margin on top of that. Set to 0 if your module blocks until the
+# transmission is complete instead of acknowledging up front.
+RF_INTERCOMMAND_DELAY = 0.8
