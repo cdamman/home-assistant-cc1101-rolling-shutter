@@ -169,6 +169,27 @@ Two GitHub workflows run on every push and pull request:
   (manifest validation) and the [HACS action](https://github.com/hacs/action)
   (repository validation).
 
+### Cutting a release
+
+Publish a GitHub release on a tag such as `v1.2.0` — that is the whole
+procedure. `release.yml` then stamps the version into `manifest.json`, zips the
+integration and attaches `cc1101_rolling_shutter.zip` to the release, which is
+what HACS downloads (`zip_release` in `hacs.json`).
+
+The version therefore lives in the tag, not in the repository: the committed
+`manifest.json` deliberately keeps a placeholder `0.0.0`, and only the copy
+inside the release asset carries the real number. Two consequences worth
+knowing:
+
+- Nothing has to be committed to bump a version, and the tag can never drift
+  from what Home Assistant reports.
+- Downloading the **default branch** from HACS bypasses the asset, so such an
+  install reports `0.0.0`. Install a release for a meaningful version.
+
+The zip is built from inside `custom_components/cc1101_rolling_shutter/`, so
+`manifest.json` sits at its root — HACS extracts the archive directly into
+`<config>/custom_components/cc1101_rolling_shutter`.
+
 ## License
 
 [MIT](LICENSE)
