@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and attach the HACS zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The committed manifest carries a placeholder version; the real one
+      # comes from the tag and only ever exists inside the release asset.
+      - name: Stamp the version from the tag
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          manifest=custom_components/cc1101_rolling_shutter/manifest.json
+          jq --arg v "$version" '.version = $v' "$manifest" > "$manifest.tmp"
+          mv "$manifest.tmp" "$manifest"
+          echo "manifest version set to $version"
+
+      # HACS extracts the archive straight into
+      # <config>/custom_components/cc1101_rolling_shutter, so manifest.json has
+      # to sit at the root of the zip, not under custom_components/.
+      - name: Build the zip
+        run: |
+          cd custom_components/cc1101_rolling_shutter
+          zip -r ../../cc1101_rolling_shutter.zip . -x '*__pycache__*' '*.pyc'
+
+      - name: Attach it to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" cc1101_rolling_shutter.zip --clobber
