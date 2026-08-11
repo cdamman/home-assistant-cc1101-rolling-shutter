@@ -29,8 +29,10 @@ DEFAULT_BAUDRATE = 115200
 COMMAND_TERMINATOR = "\n"
 # Response the module returns once the command has been sent out.
 EXPECTED_RESPONSE = "Sending"
-# Response read timeout, in seconds.
-SERIAL_TIMEOUT = 2
+# Response read timeout, in seconds. It applies to each read, and a command
+# reads two lines (the echo, then the response), so a fully unresponsive module
+# blocks an executor thread for up to twice this.
+SERIAL_TIMEOUT = 5
 
 # Spacing delay between two consecutive RF transmissions on the same CC1101
 # module, in seconds. The module acknowledges with "Sending" at the START of
