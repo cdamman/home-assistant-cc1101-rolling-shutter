@@ -28,7 +28,7 @@
 #define SIGNAL_LEN_BYTES   10   // Total: 6 bytes preamble + 2 bytes sync + 1 byte lenght + 10 bytes data = 152 bits
 #define NB_SIGNALS         4    // frames per press (consecutive counters)
 #define NB_RETRIES         4    // burst repetitions
-#define RSSI_THRESHOLD     -90
+#define RSSI_THRESHOLD    -95
 
 #define LED_PIN D4
 #define GDO0    D1
@@ -205,7 +205,7 @@ void setup() {
     ELECHOUSE_cc1101.setDeviation(55.00);   // Set the Frequency deviation in kHz. Value from 1.58 to 380.85. Default is 47.60 kHz.
     ELECHOUSE_cc1101.setChannel(0);         // Set the Channelnumber from 0 to 255. Default is channel 0.
     ELECHOUSE_cc1101.setChsp(199.95);       // The channel spacing is multiplied by the channel number CHAN and added to the base frequency in kHz. Value from 25.39 to 405.45. Default is 199.95 kHz.
-    ELECHOUSE_cc1101.setRxBW(203.125);      // Set the Receive Bandwidth in kHz. Value from 58.03 to 812.50. Default is 812.50 kHz.
+    ELECHOUSE_cc1101.setRxBW(162.50);       // Set the Receive Bandwidth in kHz. Value from 58.03 to 812.50. Signal is 2 * 55kHz wide + 9.57kBaud = 120kHz.
     ELECHOUSE_cc1101.setDRate(9.57);        // Set the Data Rate in kBaud. Value from 0.02 to 1621.83. Default is 99.97 kBaud!
     ELECHOUSE_cc1101.setPA(12);             // Set TxPower. The following settings are possible depending on the frequency band.  (-30  -20  -15  -10  -6    0    5    7    10   11   12) Default is max!
     ELECHOUSE_cc1101.setSyncMode(2);        // Combined sync-word qualifier mode. 0 = No preamble/sync. 1 = 16 sync word bits detected. 2 = 16/16 sync word bits detected. 3 = 30/32 sync word bits detected. 4 = No preamble/sync, carrier-sense above threshold. 5 = 15/16 + carrier-sense above threshold. 6 = 16/16 + carrier-sense above threshold. 7 = 30/32 + carrier-sense above threshold.
