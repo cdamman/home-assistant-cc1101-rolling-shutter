@@ -60,10 +60,10 @@
   "entity": {
     "sensor": {
       "counter": {
-        "name": "Compteur tournant"
+        "name": "Compteur cyclique du code RF"
       },
       "signal_strength": {
-        "name": "Puissance du signal"
+        "name": "Puissance du signal de la télécommande"
       }
     }
   }
