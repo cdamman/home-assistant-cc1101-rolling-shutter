@@ -34,8 +34,10 @@
       },
       "add_shutter": {
         "title": "Add a shutter",
+        "description": "Shutters heard on the air appear in the list ({discovered} available). Press a button on the original remote to make one show up. You can also type a 4-byte ID directly.",
         "data": {
-          "shutter_id": "Shutter ID (e.g. 4)",
+          "discovered": "Discovered shutter",
+          "shutter_id": "Shutter ID (8 hex digits, e.g. 12345600)",
           "name": "Name"
         }
       },
@@ -47,7 +49,9 @@
       }
     },
     "error": {
-      "already_exists": "A shutter with this ID already exists."
+      "already_exists": "A shutter with this ID already exists.",
+      "invalid_id": "A shutter ID is 4 bytes, written as 8 hex digits (e.g. 12345600 or 12:34:56:00).",
+      "id_required": "Pick a discovered shutter or type an ID."
     },
     "abort": {
       "no_shutters": "There is no shutter to remove yet."

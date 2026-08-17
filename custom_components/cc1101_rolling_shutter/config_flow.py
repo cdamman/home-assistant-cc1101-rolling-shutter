@@ -24,13 +24,18 @@ from .const import (
     DEFAULT_PORT,
     DOMAIN,
     cover_key,
+    normalise_shutter_id,
 )
+
+CONF_DISCOVERED = "discovered"
 
 
 class CC1101ConfigFlow(ConfigFlow, domain=DOMAIN):
     """Configuration of the CC1101 serial hub."""
 
-    VERSION = 1
+    # Version 2 addresses shutters by their 4-byte radio ID instead of the
+    # index that used to be hardcoded in the firmware.
+    VERSION = 2
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -119,36 +124,68 @@ class CC1101OptionsFlow(OptionsFlow):
             menu_options=["add_shutter", "remove_shutter"],
         )
 
+    def _discovery_choices(self) -> dict[str, str]:
+        """Shutters heard on the air that are not configured yet.
+
+        Empty when the entry is not loaded — the options flow must still work
+        if the serial port could not be opened.
+        """
+        hub = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
+        if hub is None:
+            return {}
+        choices: dict[str, str] = {}
+        for shutter in hub.available_discoveries():
+            label = shutter.shutter_id
+            if shutter.last_command:
+                label = f"{label} (heard: {shutter.last_command})"
+            choices[shutter.shutter_id] = label
+        return choices
+
     async def async_step_add_shutter(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Add a shutter (radio ID + name)."""
+        """Add a shutter, either discovered on the air or typed in."""
         errors: dict[str, str] = {}
         shutters: list[dict[str, str]] = list(
             self.config_entry.options.get(CONF_SHUTTERS, [])
         )
+        choices = self._discovery_choices()
 
         if user_input is not None:
-            new_id = str(user_input[CONF_SHUTTER_ID]).strip()
-            if any(cover_key(s) == new_id for s in shutters):
-                errors["base"] = "already_exists"
+            typed = str(user_input.get(CONF_SHUTTER_ID, "")).strip()
+            raw_id = typed or user_input.get(CONF_DISCOVERED, "")
+            if not raw_id:
+                errors["base"] = "id_required"
             else:
-                shutters.append(
-                    {
-                        CONF_SHUTTER_ID: new_id,
-                        CONF_NAME: user_input[CONF_NAME].strip(),
-                    }
-                )
-                return self.async_create_entry(title="", data={CONF_SHUTTERS: shutters})
+                try:
+                    new_id = normalise_shutter_id(raw_id)
+                except ValueError:
+                    errors["base"] = "invalid_id"
+                else:
+                    if any(cover_key(s) == new_id for s in shutters):
+                        errors["base"] = "already_exists"
+                    else:
+                        shutters.append(
+                            {
+                                CONF_SHUTTER_ID: new_id,
+                                CONF_NAME: user_input[CONF_NAME].strip(),
+                            }
+                        )
+                        return self.async_create_entry(
+                            title="", data={CONF_SHUTTERS: shutters}
+                        )
 
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_SHUTTER_ID): str,
-                vol.Required(CONF_NAME): str,
-            }
-        )
+        fields: dict[Any, Any] = {}
+        if choices:
+            fields[vol.Optional(CONF_DISCOVERED)] = vol.In(choices)
+        fields[vol.Optional(CONF_SHUTTER_ID, default="")] = str
+        fields[vol.Required(CONF_NAME)] = str
+
         return self.async_show_form(
-            step_id="add_shutter", data_schema=schema, errors=errors
+            step_id="add_shutter",
+            data_schema=vol.Schema(fields),
+            errors=errors,
+            description_placeholders={"discovered": str(len(choices))},
         )
 
     async def async_step_remove_shutter(

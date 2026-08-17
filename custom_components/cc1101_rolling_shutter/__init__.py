@@ -1,7 +1,6 @@
 """CC1101 Rolling Shutter integration for Home Assistant."""
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -10,13 +9,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .const import (
-    CONF_BAUDRATE,
-    CONF_PORT,
+    CONF_NAME,
     CONF_SHUTTERS,
     DOMAIN,
     cover_key,
+    is_shutter_id,
 )
-from .serial_controller import SerialController
+from .hub import CC1101Hub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,17 +24,9 @@ PLATFORMS: list[Platform] = [Platform.COVER]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up one config entry: a single CC1101 serial module."""
-    hass.data.setdefault(DOMAIN, {})
-
-    # One serial port = one CC1101 module. The lock is shared by every shutter
-    # of that module to serialize the RF transmissions (one at a time).
-    hass.data[DOMAIN][entry.entry_id] = {
-        "controller": SerialController(
-            port=entry.data[CONF_PORT],
-            baudrate=entry.data[CONF_BAUDRATE],
-        ),
-        "lock": asyncio.Lock(),
-    }
+    hub = CC1101Hub(hass, entry)
+    await hub.async_start()
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = hub
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -48,10 +39,45 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload the entry and close the serial port."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
-        data = hass.data[DOMAIN].pop(entry.entry_id, None)
-        if data is not None:
-            await hass.async_add_executor_job(data["controller"].close)
+        hub: CC1101Hub | None = hass.data[DOMAIN].pop(entry.entry_id, None)
+        if hub is not None:
+            await hub.async_stop()
     return unload_ok
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate an entry created before shutters were addressed by radio ID.
+
+    Version 1 stored the index hardcoded in the old firmware (``0`` to ``4``).
+    The firmware no longer holds a device list, so those values cannot be
+    translated into anything: the 4-byte ID has to be read off the air. Drop
+    them and say so — each shutter reappears in the options as soon as one of
+    its buttons is pressed on the original remote.
+    """
+    if entry.version >= 2:
+        return True
+
+    shutters = list(entry.options.get(CONF_SHUTTERS, []))
+    kept = [s for s in shutters if is_shutter_id(cover_key(s))]
+    dropped = [s for s in shutters if not is_shutter_id(cover_key(s))]
+
+    if dropped:
+        _LOGGER.warning(
+            "Shutters %s used the old firmware's hardcoded index and had to be "
+            "removed: shutters are now addressed by their 4-byte radio ID. "
+            "Press a button on each original remote and re-add them from the "
+            "integration options, where they will show up as discovered.",
+            ", ".join(
+                f"{s.get(CONF_NAME, '?')} ({cover_key(s) or '?'})" for s in dropped
+            ),
+        )
+
+    hass.config_entries.async_update_entry(
+        entry,
+        options={**entry.options, CONF_SHUTTERS: kept},
+        version=2,
+    )
+    return True
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:

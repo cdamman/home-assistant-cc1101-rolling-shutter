@@ -1,0 +1,38 @@
+name: Firmware
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware.yml"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware.yml"
+  workflow_dispatch:
+
+jobs:
+  compile:
+    name: Compile the sketch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The sketch targets an ESP8266: it uses the D1/D4 pin macros and
+      # Serial.printf, neither of which exists on AVR. Compiling for the board
+      # it actually runs on is the only check worth having.
+      - name: Compile for ESP8266
+        uses: arduino/compile-sketches@v1
+        with:
+          fqbn: esp8266:esp8266:nodemcuv2
+          platforms: |
+            - name: esp8266:esp8266
+              source-url: https://arduino.esp8266.com/stable/package_esp8266com_index.json
+              version: 3.1.2
+          libraries: |
+            - name: SmartRC-CC1101-Driver-Lib
+          sketch-paths: |
+            - firmware/cc1101_rolling_shutter
+          enable-warnings-report: true
+          verbose: false
