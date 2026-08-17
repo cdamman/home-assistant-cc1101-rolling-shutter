@@ -44,6 +44,10 @@ ACTION_OPEN = "open"
 ACTION_CLOSE = "close"
 ACTION_STOP = "stop"
 
+# Where a counter value came from: a frame we sent, or one heard on the air.
+COUNTER_SOURCE_SENT = "sent"
+COUNTER_SOURCE_AIR = "air"
+
 # Dispatcher signals
 SIGNAL_SHUTTER_EVENT = f"{DOMAIN}_shutter_event_{{}}_{{}}"
 SIGNAL_DISCOVERY = f"{DOMAIN}_discovery_{{}}"

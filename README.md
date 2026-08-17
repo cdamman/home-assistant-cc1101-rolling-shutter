@@ -87,6 +87,23 @@ Google tile flickering.
 Deleting a shutter **device** from the UI also removes it from the options
 automatically.
 
+### Diagnostics
+
+Each shutter carries two diagnostic sensors. They are filed under the device's
+**Diagnostic** section rather than mixed in with the shutter's controls.
+
+| Sensor | What it shows |
+| --- | --- |
+| **Rolling counter** | the shutter's counter, 0–255, as the firmware last saw it. A `source` attribute says whether the value came from a frame we sent (`sent`) or one heard on the air (`air`). |
+| **Signal strength** | RSSI in dBm of the last frame heard from that shutter's remotes, with a `last_command` attribute saying which command that frame carried. |
+
+Both are unknown until the radio says something about the shutter, and neither
+is restored across restarts: the firmware does not persist its counter table
+either, so a value carried over would be a lie.
+
+Only frames heard on the air carry a signal level, so sending a command never
+touches the signal strength: our own `tx` events report none.
+
 ## Firmware
 
 `firmware/cc1101_rolling_shutter/cc1101_rolling_shutter.ino` is the other half
