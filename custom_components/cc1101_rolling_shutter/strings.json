@@ -56,5 +56,15 @@
     "abort": {
       "no_shutters": "There is no shutter to remove yet."
     }
+  },
+  "entity": {
+    "sensor": {
+      "counter": {
+        "name": "Rolling counter"
+      },
+      "signal_strength": {
+        "name": "Signal strength"
+      }
+    }
   }
 }

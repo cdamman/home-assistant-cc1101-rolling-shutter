@@ -56,5 +56,15 @@
     "abort": {
       "no_shutters": "Aucun volet à supprimer pour le moment."
     }
+  },
+  "entity": {
+    "sensor": {
+      "counter": {
+        "name": "Compteur tournant"
+      },
+      "signal_strength": {
+        "name": "Puissance du signal"
+      }
+    }
   }
 }

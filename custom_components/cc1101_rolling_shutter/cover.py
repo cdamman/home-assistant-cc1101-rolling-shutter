@@ -27,6 +27,7 @@ from .const import (
     CONF_SHUTTER_ID,
     CONF_SHUTTERS,
     DOMAIN,
+    EVENT_RX,
     SIGNAL_SHUTTER_EVENT,
 )
 from .hub import CC1101Hub
@@ -161,7 +162,7 @@ class AssumedShutterCover(CoverEntity, RestoreEntity):
             async_dispatcher_connect(
                 self.hass,
                 SIGNAL_SHUTTER_EVENT.format(self._entry_id, self._shutter_id),
-                self._handle_remote_command,
+                self._handle_air_event,
             )
         )
 
@@ -184,13 +185,21 @@ class AssumedShutterCover(CoverEntity, RestoreEntity):
             )
 
     @callback
-    def _handle_remote_command(self, command: str | None) -> None:
+    def _handle_air_event(self, event: dict[str, Any]) -> None:
         """Track a command sent by one of the original remotes.
 
         This is the state feedback the hardware itself never provides: the
         firmware decodes every frame on the air, so operating a shutter from
         its physical remote is reflected here.
+
+        Only frames heard on the air move the state. The same signal also
+        carries our own "tx" confirmations, which the diagnostic sensors use,
+        but acting on those would just re-apply what we already published
+        optimistically.
         """
+        if event.get("event") != EVENT_RX:
+            return
+        command = event.get("command") or event.get("cmd")
         if command == ACTION_OPEN:
             self._attr_is_closed = False
         elif command == ACTION_CLOSE:
