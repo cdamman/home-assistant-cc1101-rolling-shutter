@@ -34,8 +34,10 @@
       },
       "add_shutter": {
         "title": "Ajouter un volet",
+        "description": "Les volets entendus sur les ondes apparaissent dans la liste ({discovered} disponible(s)). Appuyez sur une touche de la télécommande d'origine pour en faire apparaître un. Vous pouvez aussi saisir directement un identifiant de 4 octets.",
         "data": {
-          "shutter_id": "Identifiant du volet (ex. 4)",
+          "discovered": "Volet détecté",
+          "shutter_id": "Identifiant du volet (8 chiffres hexadécimaux, ex. 12345600)",
           "name": "Nom"
         }
       },
@@ -47,7 +49,9 @@
       }
     },
     "error": {
-      "already_exists": "Un volet possède déjà cet identifiant."
+      "already_exists": "Un volet possède déjà cet identifiant.",
+      "invalid_id": "Un identifiant de volet fait 4 octets, écrits en 8 chiffres hexadécimaux (ex. 12345600 ou 12:34:56:00).",
+      "id_required": "Choisissez un volet détecté ou saisissez un identifiant."
     },
     "abort": {
       "no_shutters": "Aucun volet à supprimer pour le moment."

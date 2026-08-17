@@ -1,7 +1,5 @@
-"""Tests for the setup, unload and device removal of a config entry."""
+"""Tests for setup, unload, migration and device removal."""
 from __future__ import annotations
-
-from unittest.mock import MagicMock
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -12,65 +10,72 @@ from custom_components.cc1101_rolling_shutter import (
     async_remove_config_entry_device,
 )
 from custom_components.cc1101_rolling_shutter.const import (
+    CONF_BAUDRATE,
     CONF_NAME,
+    CONF_PORT,
     CONF_SHUTTER_ID,
     CONF_SHUTTERS,
     DOMAIN,
 )
 
-from .conftest import TEST_BAUDRATE, TEST_PORT, TEST_SHUTTER_ID
+from .conftest import (
+    OTHER_SHUTTER_ID,
+    TEST_BAUDRATE,
+    TEST_PORT,
+    TEST_SHUTTER_ID,
+    FakeFirmware,
+)
 
 
 async def test_setup_and_unload(
-    hass: HomeAssistant, config_entry: MockConfigEntry, mock_controller: MagicMock
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    firmware: FakeFirmware,
+    setup_entry,
 ) -> None:
-    """The entry sets up, opens a controller, then unloads and closes it."""
-    config_entry.add_to_hass(hass)
-
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    """The entry starts the reader and stops it on unload."""
+    await setup_entry(config_entry)
 
     assert config_entry.state is ConfigEntryState.LOADED
-    assert hass.data[DOMAIN][config_entry.entry_id]["controller"] is mock_controller
+    assert firmware.started is True
 
     assert await hass.config_entries.async_unload(config_entry.entry_id)
     await hass.async_block_till_done()
 
     assert config_entry.state is ConfigEntryState.NOT_LOADED
     assert config_entry.entry_id not in hass.data[DOMAIN]
-    mock_controller.close.assert_called_once()
+    assert firmware.stopped is True
 
 
 async def test_controller_uses_the_configured_port(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
-    mock_controller_class: MagicMock,
+    firmware: FakeFirmware,
+    setup_entry,
 ) -> None:
     """The port and baud rate from the entry data reach the controller."""
-    config_entry.add_to_hass(hass)
+    await setup_entry(config_entry)
 
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
-
-    mock_controller_class.assert_called_once_with(
-        port=TEST_PORT, baudrate=TEST_BAUDRATE
-    )
+    kwargs = firmware.controller_class.call_args.kwargs
+    assert kwargs["port"] == TEST_PORT
+    assert kwargs["baudrate"] == TEST_BAUDRATE
 
 
 async def test_updating_options_reloads_the_entry(
-    hass: HomeAssistant, config_entry: MockConfigEntry, mock_controller: MagicMock
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    firmware: FakeFirmware,
+    setup_entry,
 ) -> None:
     """Adding a shutter through the options creates its entity."""
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    await setup_entry(config_entry)
 
     hass.config_entries.async_update_entry(
         config_entry,
         options={
             CONF_SHUTTERS: [
                 {CONF_SHUTTER_ID: TEST_SHUTTER_ID, CONF_NAME: "Living room"},
-                {CONF_SHUTTER_ID: "5", CONF_NAME: "Kitchen"},
+                {CONF_SHUTTER_ID: OTHER_SHUTTER_ID, CONF_NAME: "Kitchen"},
             ]
         },
     )
@@ -80,12 +85,13 @@ async def test_updating_options_reloads_the_entry(
 
 
 async def test_removing_a_device_drops_it_from_the_options(
-    hass: HomeAssistant, config_entry: MockConfigEntry, mock_controller: MagicMock
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    firmware: FakeFirmware,
+    setup_entry,
 ) -> None:
     """Deleting a shutter device also removes it from the options."""
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    await setup_entry(config_entry)
 
     device_registry = dr.async_get(hass)
     device = device_registry.async_get_device(
@@ -100,12 +106,13 @@ async def test_removing_a_device_drops_it_from_the_options(
 
 
 async def test_removing_an_unknown_device_is_allowed(
-    hass: HomeAssistant, config_entry: MockConfigEntry, mock_controller: MagicMock
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    firmware: FakeFirmware,
+    setup_entry,
 ) -> None:
     """A device we cannot map to a shutter is still removable."""
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    await setup_entry(config_entry)
 
     device_registry = dr.async_get(hass)
     stale = device_registry.async_get_or_create(
@@ -115,5 +122,47 @@ async def test_removing_an_unknown_device_is_allowed(
 
     assert await async_remove_config_entry_device(hass, config_entry, stale)
 
-    # The declared shutter is untouched.
+    assert len(config_entry.options[CONF_SHUTTERS]) == 1
+
+
+async def test_migration_drops_legacy_index_shutters(
+    hass: HomeAssistant, firmware: FakeFirmware, setup_entry
+) -> None:
+    """Version 1 stored the firmware's hardcoded index, which cannot be mapped.
+
+    Those entries are removed so the shutter can be re-added by its radio ID;
+    anything already in the new format is kept.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        version=1,
+        unique_id=TEST_PORT,
+        data={CONF_PORT: TEST_PORT, CONF_BAUDRATE: TEST_BAUDRATE},
+        options={
+            CONF_SHUTTERS: [
+                {CONF_SHUTTER_ID: "4", CONF_NAME: "Bedroom"},
+                {CONF_SHUTTER_ID: TEST_SHUTTER_ID, CONF_NAME: "Living room"},
+            ]
+        },
+    )
+    await setup_entry(entry)
+
+    assert entry.version == 2
+    assert entry.options[CONF_SHUTTERS] == [
+        {CONF_SHUTTER_ID: TEST_SHUTTER_ID, CONF_NAME: "Living room"}
+    ]
+    # Only the shutter with a real radio ID gets an entity.
+    assert hass.states.async_entity_ids("cover") == ["cover.living_room"]
+
+
+async def test_migration_is_a_noop_for_current_entries(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    firmware: FakeFirmware,
+    setup_entry,
+) -> None:
+    """A version 2 entry is left untouched."""
+    await setup_entry(config_entry)
+
+    assert config_entry.version == 2
     assert len(config_entry.options[CONF_SHUTTERS]) == 1
