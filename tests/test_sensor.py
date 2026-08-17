@@ -14,8 +14,8 @@ from custom_components.cc1101_rolling_shutter.const import DOMAIN
 
 from .conftest import OTHER_SHUTTER_ID, TEST_SHUTTER_ID, FakeFirmware
 
-COUNTER = "sensor.living_room_rolling_counter"
-RSSI = "sensor.living_room_signal_strength"
+COUNTER = "sensor.living_room_rf_code_rolling_counter"
+RSSI = "sensor.living_room_remote_signal_strength"
 
 
 async def test_sensors_are_diagnostic_and_enabled(

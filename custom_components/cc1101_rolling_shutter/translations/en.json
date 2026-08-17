@@ -60,10 +60,10 @@
   "entity": {
     "sensor": {
       "counter": {
-        "name": "Rolling counter"
+        "name": "RF code rolling counter"
       },
       "signal_strength": {
-        "name": "Signal strength"
+        "name": "Remote signal strength"
       }
     }
   }
