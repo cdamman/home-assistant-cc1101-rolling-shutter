@@ -1,0 +1,27 @@
+# The hub on its own, with no cover and no sensor.
+#
+# Not a curiosity: it is the first thing you flash, to read your shutter ids
+# off the air before there is anything to declare. It also pins the component's
+# AUTO_LOAD — the sources reference `cover` and `text_sensor` whether or not
+# the configuration mentions them.
+esphome:
+  name: shutters-minimal
+
+esp8266:
+  board: nodemcuv2
+
+logger:
+api:
+
+wifi:
+  ssid: not-a-real-network
+  password: not-a-real-password
+
+external_components:
+  - source:
+      type: local
+      path: ../../esphome/components
+    components: [cc1101_rolling_shutter]
+
+cc1101_rolling_shutter:
+  gdo0_pin: D1

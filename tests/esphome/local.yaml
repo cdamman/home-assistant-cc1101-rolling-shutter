@@ -1,0 +1,95 @@
+# Node used by CI to validate the component against the checkout it lives in.
+#
+# Same shape as esphome-example.yaml, with two differences that only matter to
+# a machine: the components come from this working copy rather than from git,
+# and no !secret is referenced, so `esphome config` runs without a secrets file.
+# Every option the schema accepts is spelled out, so a rename in the Python
+# side fails here instead of in someone's configuration.
+esphome:
+  name: shutters-ci
+  friendly_name: Shutters CI
+  devices:
+    - id: bedroom
+      name: Bedroom
+
+esp8266:
+  board: d1_mini
+  restore_from_flash: true
+
+logger:
+api:
+
+wifi:
+  ssid: not-a-real-network
+  password: not-a-real-password
+
+external_components:
+  - source:
+      type: local
+      path: ../../esphome/components
+    components: [cc1101_rolling_shutter]
+
+cc1101_rolling_shutter:
+  id: rf
+  gdo0_pin: D1
+  # The bus is fixed on the ESP8266, so only CS can move. Setting it is what
+  # calls setSpiPin(), which is the path being compiled here; the other three
+  # are filled in from the platform's defaults.
+  cs_pin: D8
+  frequency: 867.944MHz
+  deviation: 55.0
+  data_rate: 9.57
+  rx_bandwidth: 162.5
+  sync_word: [0x4B, 0xD4]
+  output_power: 12
+  repeats: 4
+  frames_per_press: 4
+  burst_window: 1500ms
+  rssi_threshold: -95
+  # Both node diagnostics exist without being declared — spi_connected is not
+  # mentioned anywhere here and still turns up. Writing one only adds options.
+  discovered_shutter:
+    disabled_by_default: true
+  # Translated, so the path that rewrites inherited names is compiled too.
+  diagnostic_names:
+    rf_code_rolling_counter: Compteur cyclique du code RF
+    remote_signal_strength: Puissance du signal de la télécommande
+    shutter_id_diagnostic: Identifiant RF
+    discovered_shutter: Dernier volet découvert
+    spi_connected: Liaison SPI
+
+cover:
+  # Nothing but the id and a name: device_class and all three diagnostics come
+  # from the defaults, which is what most shutters will look like.
+  - platform: cc1101_rolling_shutter
+    shutter_id: "12345600"
+    name: Living room
+
+  # Every default overridden instead — a device class of its own, two
+  # diagnostics renamed, the third kept out of Home Assistant.
+  - platform: cc1101_rolling_shutter
+    shutter_id: 0a:1b:2c:01
+    name: Kitchen
+    device_class: shutter
+    rf_code_rolling_counter:
+      name: Kitchen shutter counter
+    remote_signal_strength:
+      internal: true
+    shutter_id_diagnostic:
+      name: Kitchen RF address
+
+  # On a sub-device of its own, which is how a shutter avoids being called
+  # "Shutters CI Bedroom" in Home Assistant. The diagnostics follow it there
+  # and drop the qualifier, the sub-device's name being prefix enough.
+  - platform: cc1101_rolling_shutter
+    shutter_id: de:ad:be:ef
+    device_id: bedroom
+    name: none
+
+sensor:
+  # The standalone platform, for a shutter with no cover: heard on the air,
+  # never commanded.
+  - platform: cc1101_rolling_shutter
+    shutter_id: aa:bb:cc:dd
+    remote_signal_strength:
+      name: Neighbour remote signal strength

@@ -1,0 +1,96 @@
+name: ESPHome
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "esphome/**"
+      - "tests/firmware/**"
+      - "tests/esphome/**"
+      - "esphome-example.yaml"
+      - ".github/workflows/esphome.yml"
+  pull_request:
+    paths:
+      - "esphome/**"
+      - "tests/firmware/**"
+      - "tests/esphome/**"
+      - "esphome-example.yaml"
+      - ".github/workflows/esphome.yml"
+  workflow_dispatch:
+
+jobs:
+  protocol:
+    name: Frame codec
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # protocol.h is deliberately free of Arduino and ESPHome, so the codec
+      # can be checked on the host against the vectors PROTOCOL.md publishes —
+      # no toolchain, no hardware, and a wrong byte fails loudly here instead
+      # of silently failing to move a shutter.
+      - name: Compile and run the codec test
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror \
+            -o test_protocol tests/firmware/test_protocol.cpp
+          ./test_protocol
+
+  config:
+    name: Validate the configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install ESPHome
+        run: pip install esphome
+
+      # Runs the component's Python half: the schemas, the validators and the
+      # code generation. tests/esphome/local.yaml exercises every option, so a
+      # renamed key or a broken validator fails here.
+      - name: esphome config
+        run: |
+          esphome config tests/esphome/local.yaml
+          esphome config tests/esphome/minimal.yaml
+
+  compile:
+    name: Compile ${{ matrix.node }} for ESP8266
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both matter: the full node covers every option, and the bare hub is
+        # what catches a missing AUTO_LOAD, since it declares neither a cover
+        # nor a sensor while the sources still reference them.
+        node: [local, minimal]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install ESPHome
+        run: pip install esphome
+
+      - name: Cache the PlatformIO toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          # Per matrix leg: both run at once, and two jobs racing for one key
+          # means only one of them ever saves.
+          key: platformio-${{ matrix.node }}-${{ hashFiles('tests/esphome/*.yaml') }}
+          restore-keys: platformio-${{ matrix.node }}-
+
+      # The only check that actually cross-compiles the C++ for the board it
+      # runs on. It pulls the ESP8266 toolchain and the CC1101 driver, so it is
+      # the slow job — and the one that catches what the two above cannot.
+      - name: esphome compile
+        run: esphome compile tests/esphome/${{ matrix.node }}.yaml
