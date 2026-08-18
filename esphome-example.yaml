@@ -1,0 +1,100 @@
+# Example node for the cc1101_rolling_shutter component, on a Wemos D1 mini.
+#
+# Wiring — the SPI pins are the driver's ESP8266 defaults, so they are not
+# configured below; only GDO0 is:
+#
+#   CC1101          D1 mini
+#   VCC ----------- 3V3        (never 5V)
+#   GND ----------- G
+#   SCK ----------- D5  GPIO14
+#   MISO / GDO1 --- D6  GPIO12
+#   MOSI ---------- D7  GPIO13
+#   CSN ----------- D8  GPIO15
+#   GDO0 ---------- D1  GPIO5
+#   GDO2 ---------- not used
+#
+# D8/GPIO15 must be low while the board boots. Modules that pull CSN up will
+# stop the D1 mini from starting: set cs_pin to a free GPIO if that happens.
+# There is no `spi:` block — the CC1101 driver uses the Arduino SPI library
+# directly, not ESPHome's SPI component.
+#
+# Replace the shutter ids with your own: press a button on each original
+# remote and read the id the node reports (the "Last discovered shutter"
+# sensor, or the log line). See the README for the full walkthrough.
+#
+# Four entries are expected in secrets.yaml: wifi_ssid, wifi_password,
+# esphome_cc1101_rolling_shutter_api_key and
+# esphome_cc1101_rolling_shutter_ota_password.
+esphome:
+  name: shutters
+  friendly_name: Shutters
+  # One sub-device per shutter. Home Assistant names an entity after the device
+  # it belongs to, so without these every entity would come out as "Shutters
+  # Living room"; with them the cover below is simply "Living room".
+  devices:
+    - id: living_room
+      name: Living room
+    - id: kitchen
+      name: Kitchen
+
+esp8266:
+  board: d1_mini
+  # Shutter positions are written to flash rather than only to RTC memory,
+  # so they survive a power cut and not just a reboot or an OTA update.
+  restore_from_flash: true
+
+logger:
+
+api:
+  encryption:
+    key: !secret esphome_cc1101_rolling_shutter_api_key
+
+ota:
+  - platform: esphome
+    password: !secret esphome_cc1101_rolling_shutter_ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+captive_portal:
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/cdamman/home-assistant-cc1101-rolling-shutter
+    components: [cc1101_rolling_shutter]
+
+cc1101_rolling_shutter:
+  id: rf
+  gdo0_pin: D1
+  # Two diagnostics come for free, with nothing to declare: "Last discovered
+  # shutter", carrying the id of the last shutter heard on the air — whether or
+  # not it is configured below — and "CC1101: SPI Link", which tells you the
+  # wiring is right before you have any shutters to try. Write either key to
+  # give it options.
+  # Every diagnostic is named from these, so translating a node means editing
+  # them and nothing else. Uncomment to override; each defaults to English.
+  # diagnostic_names:
+  #   rf_code_rolling_counter: Compteur cyclique du code RF
+  #   remote_signal_strength: Puissance du signal de la télécommande
+  #   shutter_id_diagnostic: Identifiant RF
+  #   discovered_shutter: Dernier volet découvert
+  #   spi_connected: Liaison SPI
+
+cover:
+  # A shutter needs an id and a name, and nothing else: it is a blind, and all
+  # three per-shutter diagnostics are created for it, named after the cover —
+  # "Shutter ID: Living room", "RF code rolling counter: Living room", and so
+  # on. Write device_class, shutter_id_diagnostic, rf_code_rolling_counter or
+  # remote_signal_strength to override any of that; `internal: true` on a
+  # diagnostic keeps it out of Home Assistant. (The diagnostic carrying the id
+  # is shutter_id_diagnostic, shutter_id being the id itself.)
+  - platform: cc1101_rolling_shutter
+    shutter_id: "12345600"
+    device_id: living_room
+    name: none          # take the sub-device's name: "Living room"
+  - platform: cc1101_rolling_shutter
+    shutter_id: 0a:1b:2c:01
+    device_id: kitchen
+    name: none
