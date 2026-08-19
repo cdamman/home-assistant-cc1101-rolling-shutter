@@ -160,6 +160,26 @@ do without.
 `12:34:56:00` and `12345600` are the same shutter. Covers and sensors take the
 usual ESPHome options on top of that.
 
+### Tuning the receive threshold
+
+`rssi_threshold` decides what counts as noise, and the right value is a
+question about your walls rather than about the protocol: too high and a remote
+two rooms away goes unheard, too low and the log fills with unrecognised
+frames. Finding it by editing, recompiling and re-flashing between attempts is
+miserable, so it is also a `number`:
+
+```yaml
+number:
+  - platform: cc1101_rolling_shutter
+    name: RSSI threshold
+```
+
+Turn it in Home Assistant, press a remote, watch the log — the node applies
+each change immediately. The value is kept across reboots (`restore_value:
+false` to disable), and the hub's `rssi_threshold` is what it starts from the
+first time. On the ESP8266 surviving a *power cut* also wants
+`restore_from_flash: true`, as with shutter positions.
+
 ### Remembering where each shutter is
 
 The motors report nothing, so the position is inferred — and therefore worth
@@ -249,7 +269,7 @@ them:
 | `output_power` | `12` | dBm |
 | `repeats` / `frames_per_press` | `4` / `4` | one press is 4 frames, sent 4 times |
 | `burst_window` | `1500ms` | frames this close together are one press |
-| `rssi_threshold` | `-95` | dBm below which a frame is treated as noise |
+| `rssi_threshold` | `-95` | dBm below which a frame is treated as noise; see the `number` platform to turn it from Home Assistant |
 | `discovered_shutter` | automatic | text sensor carrying the id of the last shutter heard |
 | `spi_connected` | automatic | binary sensor: does the module answer on SPI |
 | `diagnostic_names` | English | the labels every diagnostic is named from |

@@ -32,7 +32,7 @@ MULTI_CONF = True
 # compiled whether or not any cover is declared, and using discovered_shutter
 # defines USE_TEXT_SENSOR. Without this, ESPHome defines the macro but never
 # copies the base component into the build tree, and the node fails to compile.
-AUTO_LOAD = ["binary_sensor", "cover", "sensor", "text_sensor"]
+AUTO_LOAD = ["binary_sensor", "cover", "number", "sensor", "text_sensor"]
 
 cc1101_rolling_shutter_ns = cg.esphome_ns.namespace("cc1101_rolling_shutter")
 CC1101RollingShutter = cc1101_rolling_shutter_ns.class_("CC1101RollingShutter", cg.Component)

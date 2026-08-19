@@ -98,3 +98,11 @@ cover:
     shutter_id: 0a:1b:2c:01
     device_id: kitchen
     name: none
+
+number:
+  # The noise floor, adjustable from Home Assistant: the value that separates a
+  # distant remote from the noise depends on the house, and hunting for it by
+  # re-flashing is no way to spend an evening. Starts from the hub's
+  # rssi_threshold, and is remembered across reboots.
+  - platform: cc1101_rolling_shutter
+    name: RSSI threshold
