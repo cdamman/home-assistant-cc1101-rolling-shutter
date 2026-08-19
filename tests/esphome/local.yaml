@@ -86,6 +86,11 @@ cover:
     device_id: bedroom
     name: none
 
+number:
+  # The receive threshold, adjustable while the node runs.
+  - platform: cc1101_rolling_shutter
+    name: RSSI threshold
+
 sensor:
   # The standalone platform, for a shutter with no cover: heard on the air,
   # never commanded.

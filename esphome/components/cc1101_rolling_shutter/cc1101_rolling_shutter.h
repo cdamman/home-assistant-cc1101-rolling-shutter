@@ -87,6 +87,7 @@ class CC1101RollingShutter : public Component {
   void set_frames_per_press(uint8_t frames) { this->frames_per_press_ = frames; }
   void set_burst_window(uint32_t ms) { this->burst_window_ = ms; }
   void set_rssi_threshold(int8_t dbm) { this->rssi_threshold_ = dbm; }
+  int8_t rssi_threshold() const { return this->rssi_threshold_; }
 
   // -- wiring, called from generated code -------------------------------
   void register_cover(uint32_t key, CC1101RollingShutterCover *cover);
