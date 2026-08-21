@@ -9,7 +9,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import final_validate as fv
 from esphome.components import cover
-from esphome.const import DEVICE_CLASS_BLIND
+from esphome.const import DEVICE_CLASS_SHUTTER
 
 from . import (
     CONF_CC1101_ROLLING_SHUTTER_ID,
@@ -30,11 +30,15 @@ CC1101RollingShutterCover = cc1101_rolling_shutter_ns.class_(
 )
 
 CONFIG_SCHEMA = (
-    # Every shutter here is a blind, and both diagnostics are wanted on every
-    # one of them — so they are the defaults rather than three lines to repeat
-    # per shutter. Any of the three can still be written to override it, and
-    # `internal: true` on a diagnostic keeps it out of Home Assistant.
-    cover.cover_schema(CC1101RollingShutterCover, device_class=DEVICE_CLASS_BLIND)
+    # Both diagnostics are wanted on every shutter, so they are the defaults
+    # rather than lines to repeat per shutter. Any of them can still be written
+    # to override it, and `internal: true` keeps one out of Home Assistant.
+    #
+    # `shutter` rather than `blind`: it is what these are, and it is what makes
+    # Home Assistant draw them as roller shutters that follow the state — a
+    # device class is the only thing per-state icons come from. See the README
+    # for what it costs in Google Home.
+    cover.cover_schema(CC1101RollingShutterCover, device_class=DEVICE_CLASS_SHUTTER)
     .extend(
         {
             cv.GenerateID(CONF_CC1101_ROLLING_SHUTTER_ID): cv.use_id(CC1101RollingShutter),

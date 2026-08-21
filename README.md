@@ -59,10 +59,17 @@ commands and the remotes' — cached after each action and **restored on restart
 
 ### Behaviour in Google Home
 
-The entity is published with the `blind` device class, so Google Home
-classifies it as a **"Blind"** (not a "Shutter"). The Home Assistant icon, on
-the other hand, stays a roller-shutter icon that follows the state
-(open/closed).
+The **integration** publishes the `blind` device class, so Google Home
+classifies it as a **"Blind"** (not a "Shutter"); its Home Assistant icon stays
+a roller-shutter one that follows the state, which a custom integration can do
+because it ships its own per-state icons.
+
+The **ESPHome node** uses `shutter` instead, and so is a **"Shutter"** in
+Google Home. ESPHome has no per-state icons of its own — they come from the
+device class or not at all — so `blind` there would draw venetian blinds, and
+naming an icon explicitly would freeze it open or closed. `shutter` is what
+gets roller shutters that follow the state. Set `device_class: blind` on a
+cover if you would rather match the integration in Google Home.
 
 A position is exposed (`SET_POSITION`) for two reasons: to keep the **"Stop"
 button permanently available** in Google Home, and to display the open/closed
@@ -145,7 +152,7 @@ cover:
     name: Living room
 ```
 
-That is a whole shutter. It is a `blind`, and it carries all three diagnostics
+That is a whole shutter. It is a `shutter`, and it carries all three diagnostics
 — named after the cover, as *Shutter ID: Living room*, *RF code rolling
 counter: Living room* and *Remote signal strength: Living room* — without any
 of them being written out. Write `device_class`, `shutter_id_diagnostic`,
